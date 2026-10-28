@@ -487,7 +487,7 @@ def cmd_analyze(a):
         failed_evals=("failed_evals", "mean")).reset_index()
     pp.to_csv(f"{out}/per_program.csv", index=False)
 
-        summ = runs.groupby("method").agg(
+    summ = runs.groupby("method").agg(
         speedup_vs_O3=("speedup", gm),
         evals_to_beat_O3=("evals_to_beat", "mean"),
         tuning_time_s=("tuning_time", "mean"),
