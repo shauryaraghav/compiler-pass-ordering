@@ -31,14 +31,14 @@ PASSES = ["none", "sroa", "mem2reg", "early-cse", "instcombine", "simplifycfg", 
           "loop-rotate", "indvars", "loop-unroll", "loop-vectorize", "slp-vectorizer", "sccp",
           "dce", "adce", "dse", "reassociate", "jump-threading", "correlated-propagation",
           "memcpyopt", "tailcallelim", "loop-deletion", "loop-idiom", "loop-load-elim", "inline"]
-L = 15                 # sequence length
-BUDGET = 50            # evaluations per search
-SEEDS = 3
-RUNS = 3               # timing repeats during search (min is used)
-FINAL_RUNS = 10        # timing repeats for final re-measurement
-PENALTY = 1e3          # runtime assigned to sequences that fail to build/run
+L = 15
+BUDGET = 50
+SEEDS = 5
+RUNS = 5
+FINAL_RUNS = 5
+PENALTY = 1e3
 RUN_TIMEOUT = 30
-USE_WARM = True        # proposed method: warm start from other programs' best sequences
+USE_WARM = False    # proposed method: warm start from other programs' best sequences
 METHODS = ["random", "ga", "bo_tpe", "proposed"]
 OUT, W = "results", "results/work"
 
@@ -139,13 +139,22 @@ def build(prog, pipeline, dump=False):
 
 
 def time_run(runs):
-    best = 1e18
+    samples = []
+
     for _ in range(runs):
         t = time.perf_counter()
-        subprocess.run([f"{W}/prog"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                       check=True, timeout=RUN_TIMEOUT)
-        best = min(best, time.perf_counter() - t)
-    return best
+
+        subprocess.run(
+            [f"{W}/prog"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+            timeout=RUN_TIMEOUT
+        )
+
+        samples.append(time.perf_counter() - t)
+
+    return float(np.median(samples))
 
 
 def evaluate(prog, pipeline, runs=RUNS):
