@@ -463,13 +463,19 @@ def cmd_analyze(a):
         beat = g[g.runtime < b["runtime"]]
         ok = bool(f["valid"])
         rows.append(dict(
-            program=p, method=m, seed=s,
+            program=p,
+            method=m,
+            seed=s,
             speedup=b["runtime"] / f["runtime"] if ok else np.nan,
             size_ratio=f["size"] / b["size"] if ok else np.nan,
             compile_ratio=f["compile_time"] / b["compile_time"] if ok else np.nan,
             evals_to_beat=int(beat.eval_idx.min()) if len(beat) else B,
-            reached=int(len(beat) > 0), tuning_time=g.elapsed.max(),
-            valid=int(ok), failed_evals=int(g.failed.sum())))
+            reached=int(len(beat) > 0),
+            tuning_time=g.elapsed.max(),
+            valid=int(ok),
+            failed_evals=int(g.failed.sum()),
+            failure_rate=float(g.failed.mean())
+        ))
     runs = pd.DataFrame(rows)
     runs.to_csv(f"{out}/per_run.csv", index=False)
 
@@ -481,12 +487,20 @@ def cmd_analyze(a):
         failed_evals=("failed_evals", "mean")).reset_index()
     pp.to_csv(f"{out}/per_program.csv", index=False)
 
-    summ = pp.groupby("method").agg(
-        speedup_vs_O3=("speedup", gm), code_size_vs_O3=("size_ratio", gm),
-        evals_to_beat_O3=("evals_to_beat", "mean"), tuning_time_s=("tuning_time", "mean"),
-        compile_time_vs_O3=("compile_ratio", gm), robustness_std=("speedup_std", "mean"),
-        reached_O3_rate=("reached", "mean"), valid_rate=("valid", "mean"),
-        avg_failed_evals=("failed_evals", "mean"))
+        summ = runs.groupby("method").agg(
+        speedup_vs_O3=("speedup", gm),
+        evals_to_beat_O3=("evals_to_beat", "mean"),
+        tuning_time_s=("tuning_time", "mean"),
+        compile_time_vs_O3=("compile_ratio", gm),
+        reached_O3_rate=("reached", "mean"),
+        valid_rate=("valid", "mean"),
+        avg_failed_evals=("failed_evals", "mean"),
+        failure_rate=("failure_rate", "mean")
+    )
+
+    summ["robustness_std"] = (
+        pp.groupby("method")["speedup_std"].mean()
+    )
     order = [m for m in METHODS if m in summ.index]
     summ = summ.loc[order]
     summ.to_csv(f"{out}/summary.csv")
@@ -495,11 +509,22 @@ def cmd_analyze(a):
     methods = order
     # 1) convergence
     res = res.sort_values(["program", "method", "seed", "eval_idx"]).copy()
-    res["sp"] = res.apply(lambda r: base.loc[r.program, "runtime"] / r.runtime, axis=1)
-    res["best_sp"] = res.groupby(["program", "method", "seed"]).sp.cummax()
+    groups = ["program", "method", "seed"]
+
+    res["sp"] = res.apply(
+        lambda r: base.loc[r.program, "runtime"] / r.runtime,
+        axis=1
+    )
+    res.loc[res["failed"].astype(bool), "sp"] = np.nan
+
+    res["best_sp"] = res.groupby(groups)["sp"].cummax()
+    res["best_sp"] = res.groupby(groups)["best_sp"].ffill()
     plt.figure(figsize=(7, 4.5))
     for m in methods:
-        g = res[res.method == m].groupby("eval_idx").best_sp.agg(["mean", "std"]).fillna(0)
+        g = res[res.method == m].groupby("eval_idx")["best_sp"].agg(
+            ["mean", "std"]
+        )
+        g["std"] = g["std"].fillna(0)
         plt.plot(g.index, g["mean"], label=m)
         plt.fill_between(g.index, g["mean"] - g["std"], g["mean"] + g["std"], alpha=0.15)
     plt.axhline(1.0, color="k", ls="--", lw=0.8, label="-O3")
@@ -523,19 +548,28 @@ def cmd_analyze(a):
     plt.ylabel("Speedup over -O3 (all programs, all seeds)"); plt.title("Spread across runs")
     plt.tight_layout(); plt.savefig(f"{out}/speedup_boxplot.png", dpi=150); plt.close()
 
-    # 4) six-parameter summary
-    cols = [("speedup_vs_O3", "1. Speedup vs -O3 (higher better)"),
-            ("code_size_vs_O3", "2. Code size vs -O3 (lower better)"),
-            ("evals_to_beat_O3", "3. Evals to beat -O3 (lower better)"),
-            ("tuning_time_s", "4. Tuning time, s (lower better)"),
-            ("compile_time_vs_O3", "5. Compile time vs -O3 (lower better)"),
-            ("robustness_std", "6. Std of speedup across seeds (lower better)")]
+    # 4) six-metric summary
+    cols = [
+        ("speedup_vs_O3", "1. Geometric-mean speedup (higher better)"),
+        ("evals_to_beat_O3", "2. Evaluations to beat -O3 (lower better)"),
+        ("tuning_time_s", "3. Tuning time in seconds (lower better)"),
+        ("compile_time_vs_O3", "4. Compile time vs -O3 (lower better)"),
+        ("robustness_std", "5. Mean per-program speedup SD (lower better)"),
+        ("failure_rate", "6. Failed evaluation rate (lower better)")
+    ]
+
     fig, axs = plt.subplots(2, 3, figsize=(13, 7))
-    for ax, (c, t) in zip(axs.ravel(), cols):
-        ax.bar(methods, summ[c]); ax.set_title(t, fontsize=9)
-        if "vs_O3" in c:
+
+    for ax, (column, title) in zip(axs.ravel(), cols):
+        ax.bar(methods, summ[column])
+        ax.set_title(title, fontsize=9)
+
+        if column in {"speedup_vs_O3", "compile_time_vs_O3"}:
             ax.axhline(1.0, color="k", ls="--", lw=0.8)
-    plt.tight_layout(); plt.savefig(f"{out}/summary_six_params.png", dpi=150); plt.close()
+
+    plt.tight_layout()
+    plt.savefig(f"{out}/summary_six_params.png", dpi=150)
+    plt.close()
     print(f"\nSaved summary.csv, per_program.csv, per_run.csv and 4 PNG graphs in {out}/")
 
 
