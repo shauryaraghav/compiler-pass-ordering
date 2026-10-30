@@ -1,0 +1,15 @@
+\begin{table*}[t]
+\caption{Comparison with Selected Compiler Autotuning and Pass-Ordering Studies}
+\label{tab:comparison}
+\centering\small
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{4.4cm}X@{}}
+\toprule
+Study & Search method & Objective and evaluation scale & Reported findings\\
+\midrule
+Liu et al.\ \cite{liu2024dco} & Dependence graphs and generated pass subsequences & Runtime and code size; CBench and PolyBench & Reports up to 1.22$\times$ runtime speedup over LLVM \texttt{-O3} and 1.24$\times$ code-size improvement relative to \texttt{-Oz}.\\
+Wu et al.\ \cite{wu2022bayesian} & Bayesian optimization of Clang/Polly loop-optimization pragmas & Execution time; six PolyBench benchmarks and 200 evaluations & Lower execution times for five of six benchmarks in the reported setup; Floyd--Warshall did not benefit.\\
+Liang et al.\ \cite{liang2023coreset} & Coreset of pass sequences and learned sequence selection & Code-size optimization across 4,683 repositories in 14 datasets & Reports an average 4.5\% code-size improvement relative to LLVM \texttt{-Oz}.\\
+This work & Sequence-aware Gaussian Process with Expected Improvement & Verified runtime; five PolyBench/C benchmarks and 20 evaluations per search with five seeds & Geometric-mean verified speedup of 0.942 relative to \texttt{-O3}; no statistically significant advantage over the evaluated baselines.\\
+\bottomrule
+\end{tabularx}
+\end{table*}

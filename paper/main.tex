@@ -1,0 +1,51 @@
+% Compiler Pass Ordering with Sequence-Aware Bayesian Optimization
+% Self-contained manuscript: compiles on Overleaf (pdfLaTeX) with no extra class files.
+% To use the official IEEE Access template instead, see ../README.md ("Manuscript").
+\documentclass[10pt,twocolumn]{article}
+\usepackage[a4paper,margin=0.75in,columnsep=0.25in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,tabularx,array}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf,labelsep=period}
+\titleformat{\section}{\normalsize\bfseries\centering}{\Roman{section}.}{0.5em}{\MakeUppercase}
+\titleformat{\subsection}{\normalsize\bfseries}{\Alph{subsection}.}{0.5em}{}
+\renewcommand{\thetable}{\arabic{table}}
+\renewcommand{\thefigure}{\arabic{figure}}
+
+% --- helpers used in sections/related_work.tex --------------------------------
+\newcounter{study}
+\makeatletter
+\@addtoreset{study}{subsection}
+\makeatother
+\newcommand{\study}[1]{\par\medskip\refstepcounter{study}\noindent\textbf{\thestudy)\ #1}\par\smallskip}
+\newcommand{\ps}{\textbf{Proposed solution:}}
+\newcommand{\me}{\textbf{Methodology:}}
+\newcommand{\re}{\textbf{Results:}}
+\newcommand{\rg}{\textbf{Research gap:}}
+\newenvironment{IEEEkeywords}{\par\smallskip\noindent\textbf{INDEX TERMS}\ \itshape}{\par}
+
+\title{\textbf{Compiler Pass Ordering with\\ Sequence-Aware Bayesian Optimization}}
+\author{%
+Shaurya Raghav, Manyata Tripathi, Yakshith Reddy, Piyush Mahto, and Bhuvaneswari M\\[2pt]
+\small School of Computer Science and Engineering, Vellore Institute of Technology, Vellore, Tamil Nadu, India\\
+\small Corresponding author: Bhuvaneswari M (e-mail: m.bhuvaneswari@vit.ac.in)}
+\date{}
+
+\begin{document}
+\twocolumn[\maketitle\input{sections/abstract}\vspace{4pt}]
+\input{sections/introduction}
+\input{sections/related_work}
+\input{sections/problem_method}
+\input{sections/setup}
+\input{figures/workflow}
+\input{sections/results}
+\input{references}
+\end{document}

@@ -1,0 +1,27 @@
+\begin{figure*}[!t]
+\centering
+\resizebox{0.78\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=7mm,
+  box/.style={draw, rounded corners=2pt, align=center, text width=6.3cm, minimum height=9mm, font=\small, fill=gray!8},
+  dec/.style={draw, diamond, aspect=3, align=center, font=\small, inner sep=1pt, fill=gray!8},
+  arr/.style={-{Stealth[length=2mm]}, thick}]
+\node[box] (a) {Initialize benchmark, search method, and evaluation budget};
+\node[box, below=of a] (b) {Select a candidate LLVM pass sequence with 15 positions};
+\node[box, below=of b] (c) {For proposed BO, use up to three verified sequences from other programs during the first eight evaluations};
+\node[box, below=of c] (d) {Compile candidate using the selected LLVM pass sequence; record compilation failures};
+\node[box, below=of d] (e) {For successful candidates, run three times and use the minimum runtime for search};
+\node[box, below=of e] (f) {Record candidate, measured objective, and evaluation status};
+\node[dec, below=8mm of f] (g) {Budget exhausted?};
+\node[box, below=9mm of g] (h) {Check the five fastest distinct candidates for correctness; re-time the first passing candidate using ten executions};
+\node[box, below=of h] (i) {Report verified performance, search-time results, and failure statistics};
+\node[box, right=2.2cm of g, text width=4.4cm] (j) {Update the Gaussian Process using the sequence-aware kernel};
+\node[box, above=of j, text width=4.4cm] (k) {Maximize Expected Improvement to select the next candidate};
+\draw[arr] (a)--(b); \draw[arr] (b)--(c); \draw[arr] (c)--(d); \draw[arr] (d)--(e); \draw[arr] (e)--(f); \draw[arr] (f)--(g);
+\draw[arr] (g)--node[right, font=\small]{Yes}(h); \draw[arr] (h)--(i);
+\draw[arr] (g)--node[above, font=\small]{No}(j); \draw[arr] (j)--(k);
+\draw[arr] (k) |- (b);
+\end{tikzpicture}}
+\caption{Workflow of sequence-aware Bayesian optimization, showing candidate evaluation, Gaussian Process updates, and final correctness verification.}
+\label{fig:workflow}
+\end{figure*}

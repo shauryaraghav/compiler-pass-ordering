@@ -1,0 +1,114 @@
+\section{Problem Formulation}
+Let the available set contain 25 LLVM optimization passes and a special \texttt{none} option. A candidate pipeline is represented as a fixed-length sequence of 15 positions:
+\begin{equation}
+x = (x_1, x_2, \ldots, x_{15}), \quad x_i \in \mathcal{P},
+\end{equation}
+where $\mathcal{P}$ contains the 26 available choices. The theoretical search space is therefore
+\begin{equation}
+|\Omega| = 26^{15} \approx 1.68 \times 10^{21}.
+\end{equation}
+Exhaustively evaluating this space is impractical. The objective is to identify promising sequences using a limited number of compiler and runtime evaluations.
+
+Let $T_{O3}$ denote the measured execution time of the LLVM \texttt{-O3} baseline and $T(x)$ the measured execution time for candidate sequence $x$. The speedup relative to the baseline is
+\begin{equation}
+S(x) = \frac{T_{O3}}{T(x)}.
+\end{equation}
+A value above 1 indicates that the candidate is faster than \texttt{-O3}; a value below 1 indicates that it is slower. The optimization objective is
+\begin{equation}
+x^{*} = \arg\max_{x \in \Omega} S(x).
+\end{equation}
+Each candidate must also be compiled and evaluated through the experimental pipeline. Invalid compilations or failed evaluations must be recorded rather than treated as successful performance measurements.
+
+\section{Proposed Methodology}
+\subsection{Sequence-Aware Kernel}
+Let a candidate pipeline be $x = (x_1, \ldots, x_L)$, where $L = 15$ and each position is selected from $K = 26$ categories: the 25 LLVM optimization passes and the special \texttt{none} choice. The implementation maps each sequence to three feature representations. First, $X(x)$ is the position-wise one-hot representation. Second, $G(x)$ is a binary vector that marks the ordered adjacent pass pairs appearing in the sequence. Third, $c(x)$ records the number of occurrences of each pass category and is normalized to unit $\ell_2$ norm.
+
+The implementation computes position, adjacency, and pass-count similarities as
+\begin{align}
+S_{\mathrm{pos}}(x,x') &= \frac{\langle \mathrm{vec}(X(x)), \mathrm{vec}(X(x'))\rangle}{L}, \\
+S_{\mathrm{adj}}(x,x') &= \frac{\langle G(x), G(x')\rangle}{L-1}, \\
+S_{\mathrm{cnt}}(x,x') &= \langle \hat{c}(x), \hat{c}(x')\rangle,
+\end{align}
+where $\hat{c}(x) = c(x)/(\lVert c(x)\rVert_2 + \epsilon)$, and $\epsilon$ is a small numerical-stability constant. The position and adjacency features capture ordering information, while the normalized pass-count feature represents overall pass composition. The distance-like score and sequence-aware kernel are defined as
+\begin{align}
+d(x,x') &= [1 - S_{\mathrm{pos}}] + [1 - S_{\mathrm{adj}}] + [1 - S_{\mathrm{cnt}}], \\
+k_{\mathrm{seq}}(x,x';\ell) &= \exp\!\left(-\frac{d(x,x')}{\ell}\right) \\
+&= e^{-3/\ell}\exp\!\left(\frac{S_{\mathrm{pos}}+S_{\mathrm{adj}}+S_{\mathrm{cnt}}}{\ell}\right),
+\end{align}
+where $\ell$ is selected from $\{0.25, 0.5, 1.0, 2.0\}$ by maximizing the Gaussian Process (GP) log marginal likelihood.
+
+Each similarity is an inner-product kernel derived from a fixed feature representation, with a positive normalization factor. Their sum is positive semidefinite, and its element-wise exponential is also positive semidefinite by the power-series expansion and the Schur product theorem. Multiplication by the positive constant $e^{-3/\ell}$ preserves this property. Thus, the specified sequence-aware kernel is positive semidefinite and can be used as a GP covariance function. The implementation adds a diagonal observation-noise term of $\sigma_n^2 = 0.01$ to the training covariance matrix.
+
+\subsection{Gaussian Process Surrogate}
+The proposed method models a transformed runtime objective using a GP. Let $\tilde{q}$ denote the standardized observations of that objective, and let $K$ be the covariance matrix over evaluated sequences. For a candidate $x$, let $k_x$ contain its covariances with the observed sequences. Under a zero-mean GP prior, the predictive mean is
+\begin{equation}
+\mu(x) = k_x^{\top}(K + \sigma_n^2 I)^{-1}\tilde{q}.
+\end{equation}
+The predictive variance is
+\begin{equation}
+\sigma^2(x) = k_{\mathrm{seq}}(x,x) - k_x^{\top}(K + \sigma_n^2 I)^{-1}k_x.
+\end{equation}
+The predictive mean estimates the transformed runtime objective, while the predictive uncertainty helps the acquisition function balance promising candidates against less certain candidates.
+
+\input{tables/table_comparison}
+
+\subsection{Runtime Objective and Expected Improvement}
+Let $T_{O3}$ denote the measured runtime of the LLVM \texttt{-O3} baseline and $T(x)$ the measured runtime of candidate sequence $x$. The reported speedup is
+\begin{equation}
+S(x) = \frac{T_{O3}}{T(x)},
+\end{equation}
+where a value above one indicates an improvement over the baseline. The proposed optimizer instead minimizes the clipped log-runtime ratio
+\begin{equation}
+q(x) = \mathrm{clip}\!\left(\log\frac{T(x)}{T_{O3}},\, -2.0,\, 2.5\right).
+\end{equation}
+At each BO iteration, the observed values are standardized:
+\begin{equation}
+\tilde{q}_i = \frac{q(x_i) - \mu_q}{\sigma_q + 10^{-9}},
+\end{equation}
+where $\mu_q$ and $\sigma_q$ are the mean and standard deviation of the currently observed transformed values. The GP and acquisition function minimize this standardized objective; speedup remains the reporting metric.
+
+Let $\tilde{q}_{\min}$ be the best (lowest) standardized objective observed so far. For a candidate with predictive mean $\mu(x)$ and standard deviation $\sigma(x)$, define
+\begin{equation}
+I(x) = \tilde{q}_{\min} - \mu(x) - \xi,
+\end{equation}
+where $\xi = 0.01$. Expected Improvement for minimization is
+\begin{align}
+z &= \frac{I(x)}{\sigma(x)}, \\
+\mathrm{EI}(x) &= I(x)\,\Phi(z) + \sigma(x)\,\phi(z),
+\end{align}
+where $\Phi$ and $\phi$ are the standard-normal cumulative distribution and probability-density functions. The next candidate is selected by maximizing EI over the available discrete candidate pool. When predictive uncertainty approaches zero, EI is evaluated using its limiting value.
+
+\subsection{Candidate Generation and Warm Start}
+The acquisition function cannot be maximized exhaustively over the $26^{15} \approx 1.68\times 10^{21}$ possible sequences. Instead, at each Bayesian optimization (BO) iteration, the implementation constructs a candidate pool containing up to 300 uniformly sampled random sequences for global exploration and 40 mutated sequences from each of the five best observed sequences for local exploration. This produces at most 500 candidate sequences before filtering. Each mutation applies one to three edits; each edit replaces a randomly selected position with a random pass with probability 0.7, or swaps two adjacent positions otherwise. Duplicate candidates and sequences evaluated in previous iterations are removed. The expected improvement (EI) acquisition value is then computed for every remaining candidate, so at most 500 EI values are evaluated per iteration. The unevaluated candidate with the highest EI is selected for the next compile-and-run evaluation.
+
+For the proposed method, up to three verified sequences from other benchmark programs are used during the initial design of eight evaluations; remaining initial candidates are random. The no-warm-start ablation instead uses random sequences for all eight initial evaluations. Warm-start sequences are evaluated on the target program rather than accepted without measurement.
+
+\begin{algorithm}[t]
+\caption{Sequence-Aware Bayesian Optimization}
+\label{alg:bo}
+\begin{enumerate}[leftmargin=*,itemsep=0pt,label=\arabic*)]
+\item Initialize the benchmark, evaluation budget, observed-data set, and search method.
+\item For the proposed method, add up to three warm-start sequences to the initial design when available; use random sequences for the remaining initial evaluations.
+\item Compile and time each initial candidate; record successful measurements and failed evaluations.
+\item Transform and standardize the observed runtime objective.
+\item Fit the GP using the sequence-aware kernel and select the length scale by log marginal likelihood.
+\item Generate the discrete candidate pool, remove duplicates and previously evaluated sequences, and compute EI for each remaining candidate.
+\item Evaluate the candidate with the largest EI, update the observations, and repeat until the budget is exhausted.
+\item Rank distinct successful candidates by their search-time measurements. Check the five fastest distinct candidates for output correctness, and re-time the first candidate that passes.
+\end{enumerate}
+\end{algorithm}
+
+\begin{algorithm}[t]
+\caption{Candidate Evaluation and Final Verification}
+\label{alg:eval}
+\begin{enumerate}[leftmargin=*,itemsep=0pt,label=\arabic*)]
+\item Receive a candidate sequence and the target benchmark.
+\item Generate the corresponding LLVM pass pipeline and compile the candidate.
+\item If compilation or execution fails, record a failed evaluation and apply the internal penalty used by the search procedure.
+\item Otherwise, execute the candidate three times and use the minimum runtime as the search-time measurement.
+\item Calculate the transformed objective and speedup relative to the LLVM \texttt{-O3} baseline; store the measurements and run metadata.
+\item After the search, rank distinct successful candidates by search-time runtime and check up to five for output correctness against the unoptimized reference.
+\item Re-time the first candidate that passes using the minimum of ten executions; use the same timing procedure for the \texttt{-O3} baseline.
+\item Report verified speedup separately from search-time metrics, and summarize failed evaluations separately from valid runtime observations.
+\end{enumerate}
+\end{algorithm}

@@ -1,0 +1,16 @@
+\section{Introduction}
+Compiler optimization is an essential stage in translating high-level programs into efficient executable code. Modern compilers apply a sequence of transformations to an intermediate representation to improve execution time, reduce code size, and exploit hardware resources. However, the effectiveness of an optimization pass depends not only on the transformation itself but also on the transformations that precede and follow it. Consequently, selecting an effective ordering of compiler optimization passes is a challenging search problem \cite{ashouri2018survey,nobre2019nonio,kruse2020autotuning,queiroz2020hybrid,liu2024dco}.
+
+LLVM provides a flexible compilation framework in which optimization passes can be composed into pipelines. Although standard optimization levels such as \texttt{-O3} provide strong general-purpose performance, a fixed pipeline may not be optimal for every program. Different applications exhibit different computational characteristics, and interactions between passes can produce different performance outcomes. Exhaustively evaluating every possible pass sequence is impractical because the search space grows rapidly with sequence length \cite{trofin2021mlgo,cummins2022compilergym,ashouri2024acpo}.
+
+Search-based methods provide an alternative to exhaustive evaluation. Random search samples candidate sequences without learning from earlier evaluations, while genetic algorithms use population-based evolutionary operations. Reinforcement-learning approaches have also been investigated for compiler phase ordering, including LLVM-based optimization and high-level synthesis. These approaches demonstrate both the potential and the workload dependence of learned pass sequences \cite{hajali2020autophase,wu2020roicf,jain2022poset,shahzad2022rl}.
+
+This work investigates a sequence-aware Bayesian optimization approach for LLVM compiler pass ordering. The proposed method uses a Gaussian Process surrogate with a sequence-aware kernel, Expected Improvement for candidate selection, and warm-start information across benchmark programs. Its performance is compared with Random Search, a Genetic Algorithm, Tree-structured Parzen Estimator (TPE), and a no-warm-start ablation using five PolyBench/C benchmarks. Recent compiler autotuning and pass-ordering studies provide relevant comparison points for this evaluation \cite{pouchet2016polybench,wu2022bayesian,liang2023coreset,ashouri2022mlgoperf,chang2023ensemble}.
+
+The main contributions of this work are:
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+\item An experimental framework for evaluating candidate LLVM pass sequences through compilation, runtime measurement, and correctness checking.
+\item A comparative evaluation of four search strategies, together with a no-warm-start ablation, under a limited budget of 20 evaluations per search.
+\item An analysis of runtime speedup, tuning cost, compilation overhead, and variability across five benchmark programs, including the distinction between search-time results and final verified results.
+\end{enumerate}
+The remainder of this paper presents related work, the problem formulation and proposed method, the experimental setup, results, limitations, and future work.

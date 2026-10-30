@@ -1,0 +1,12 @@
+{
+  "polybench_version": "4.2.1",
+  "source": "https://github.com/MatthiasJReisinger/PolyBenchC-4.2.1.git",
+  "benchmarks": [
+    {"name": "gemm",           "dir": "linear-algebra/blas/gemm",   "flags": "-DLARGE_DATASET"},
+    {"name": "jacobi-2d",      "dir": "stencils/jacobi-2d",         "flags": "-DTSTEPS=200 -DN=1300"},
+    {"name": "floyd-warshall", "dir": "medley/floyd-warshall",      "flags": "-DN=900"},
+    {"name": "covariance",     "dir": "datamining/covariance",      "flags": "-DM=800 -DN=900"},
+    {"name": "2mm",            "dir": "linear-algebra/kernels/2mm", "flags": "-DNI=500 -DNJ=550 -DNK=700 -DNL=750"}
+  ],
+  "note": "Informational copy of the PROGRAMS list in run_all.py (run_all.py is the source of truth)."
+}

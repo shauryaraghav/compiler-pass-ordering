@@ -1,0 +1,104 @@
+\begin{table*}[t]
+\caption{Verified results (25 runs per method; correctness checked, minimum of ten timings). Speedups are relative to \texttt{-O3} (higher is better). Robustness is the standard deviation across seeds averaged over benchmarks; the compile-time ratio is relative to \texttt{-O3}.}
+\label{tab:verified}
+\centering\small
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+Method & Geometric-mean speedup [95\% CI] & Median & Beat \texttt{-O3} (\%) & Robustness & Compile-time ratio & Valid (\%)\\
+\midrule
+Random Search & 0.947 [0.906, 0.982] & 0.999 & 44 & 0.065 & 0.931 & 100\\
+Genetic Algorithm & 0.917 [0.860, 0.966] & 1.000 & 48 & 0.095 & 0.901 & 100\\
+TPE & 0.952 [0.923, 0.977] & 1.000 & 44 & 0.059 & 0.844 & 100\\
+Proposed & 0.942 [0.885, 0.981] & 1.000 & 44 & 0.072 & 0.948 & 100\\
+Proposed, no warm start & 0.933 [0.876, 0.981] & 1.001 & 64 & 0.097 & 1.107 & 100\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table}[t]
+\caption{Search-time results (minimum of three timings, best of 20 evaluations; biased towards favorable timings)}
+\label{tab:search}
+\centering\footnotesize
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Method & Best-of-20 speedup & Beat \texttt{-O3} (\%) & Evals.\ to beat \texttt{-O3}\\
+\midrule
+Random Search & 0.954 & 48 & 12.3\\
+Genetic Algorithm & 0.928 & 52 & 12.7\\
+TPE & 0.945 & 48 & 14.8\\
+Proposed & 0.956 & 64 & 9.9\\
+Proposed, no warm start & 0.940 & 68 & 10.0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table*}[t]
+\caption{Verified speedup per benchmark (mean $\pm$ standard deviation over five seeds)}
+\label{tab:perbench}
+\centering\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Benchmark & Random & GA & TPE & Proposed & Proposed, no warm start\\
+\midrule
+2MM & 0.979 $\pm$ 0.049 & 0.979 $\pm$ 0.052 & 0.980 $\pm$ 0.048 & 0.979 $\pm$ 0.048 & 0.979 $\pm$ 0.049\\
+Covariance & 0.998 $\pm$ 0.007 & 1.000 $\pm$ 0.003 & 0.983 $\pm$ 0.039 & 1.000 $\pm$ 0.002 & 1.001 $\pm$ 0.001\\
+Floyd--Warshall & 0.960 $\pm$ 0.053 & 0.816 $\pm$ 0.213 & 0.980 $\pm$ 0.047 & 0.863 $\pm$ 0.205 & 0.923 $\pm$ 0.176\\
+GEMM & 0.963 $\pm$ 0.052 & 0.919 $\pm$ 0.094 & 0.901 $\pm$ 0.083 & 0.983 $\pm$ 0.039 & 0.878 $\pm$ 0.182\\
+Jacobi-2D & 0.860 $\pm$ 0.163 & 0.920 $\pm$ 0.111 & 0.925 $\pm$ 0.078 & 0.926 $\pm$ 0.063 & 0.927 $\pm$ 0.076\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table}[t]
+\caption{Failed builds and tuning time per search (seconds)}
+\label{tab:cost}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Method & Failed/search & Failed (\%) & Total & Compile & Execute & Other\\
+\midrule
+Random Search & 1.12 & 5.6 & 65.1 & 6.3 & 56.8 & 2.0\\
+Genetic Algorithm & 0.64 & 3.2 & 64.7 & 6.7 & 56.0 & 2.0\\
+TPE & 1.32 & 6.6 & 68.1 & 6.3 & 59.5 & 2.3\\
+Proposed & 0.40 & 2.0 & 51.6 & 6.6 & 43.2 & 1.8\\
+Proposed, no warm start & 0.56 & 2.8 & 54.4 & 7.2 & 45.5 & 1.7\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\caption{Paired Wilcoxon signed-rank test on verified speedup (25 pairs). Difference is proposed minus other, median.}
+\label{tab:wilcoxon}
+\centering\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Comparison & Median difference & $p$\\
+\midrule
+Proposed vs Random Search & $+0.0001$ & 0.542\\
+Proposed vs Genetic Algorithm & $+0.0004$ & 0.560\\
+Proposed vs TPE & $+0.0008$ & 0.325\\
+Proposed vs no warm start & $-0.0001$ & 0.751\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table*}[t]
+\caption{Exploratory paired comparisons of search cost (median difference, first method minus second; $p$ from the Wilcoxon signed-rank test; negative differences favor the first method; Bonferroni threshold 0.0028)}
+\label{tab:explore}
+\centering\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{2}{c}{Evaluations to beat \texttt{-O3}} & \multicolumn{2}{c}{Failed builds} & \multicolumn{2}{c}{Tuning time (s)}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+Comparison & Median diff. & $p$ & Median diff. & $p$ & Median diff. & $p$\\
+\midrule
+Proposed vs Random Search & 0.00 & 0.135 & 0.00 & 0.006 & $-8.63$ & $<0.001$\\
+Proposed vs Genetic Algorithm & 0.00 & 0.162 & 0.00 & 0.516 & $-10.67$ & $<0.001$\\
+Proposed vs TPE & $-1.00$ & 0.003 & $-1.00$ & $<0.001$ & $-13.93$ & $<0.001$\\
+No warm start vs Random Search & 0.00 & 0.262 & 0.00 & 0.035 & $-12.25$ & $<0.001$\\
+No warm start vs Genetic Algorithm & 0.00 & 0.179 & 0.00 & 0.848 & $-10.42$ & $<0.001$\\
+No warm start vs TPE & $-1.00$ & 0.006 & 0.00 & 0.018 & $-13.20$ & $<0.001$\\
+\bottomrule
+\end{tabular}
+\end{table*}

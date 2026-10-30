@@ -1,0 +1,1 @@
+["none", "sroa", "mem2reg", "early-cse", "instcombine", "simplifycfg", "gvn", "licm", "loop-rotate", "indvars", "loop-unroll", "loop-vectorize", "slp-vectorizer", "sccp", "dce", "adce", "dse", "reassociate", "jump-threading", "correlated-propagation", "memcpyopt", "tailcallelim", "loop-deletion", "loop-idiom", "loop-load-elim", "inline"]

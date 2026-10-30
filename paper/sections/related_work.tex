@@ -1,0 +1,183 @@
+\section{Related Work}
+Compiler optimization pass ordering, also known as the phase-ordering problem, concerns selecting not only which transformations to apply but also the order in which they are applied. The effects of individual passes may depend on the intermediate representation produced by previous transformations. Consequently, an effective optimization strategy for one program may not provide the same benefit for another program. A survey of machine-learning-based compiler autotuning reviews these challenges and the broader use of learned methods for optimization selection and phase ordering \cite{ashouri2018survey}.
+
+A related direction is to reuse knowledge from previously evaluated programs rather than restarting every search from scratch. Collaborative filtering has been investigated as a way to reuse compiler-optimization measurements across programs and reduce the number of required compilation and performance-test iterations \cite{cereda2020collab}. This motivates the use of cross-program information when constructing initial candidates.
+
+Bayesian optimization has been applied to compiler autotuning, including LLVM Clang/Polly loop-optimization pragmas \cite{wu2022bayesian}. Practical optimization platforms such as Optuna provide configurable samplers and an experimental framework for automated search \cite{akiba2019optuna}. These approaches provide relevant context for comparing model-guided search with random and evolutionary baselines under a limited evaluation budget.
+
+LLVM-based learning frameworks and compiler optimization environments provide the infrastructure needed to train and evaluate learned compiler decisions \cite{trofin2021mlgo,cummins2022compilergym}. The PolyBench/C suite supplies the numerical kernels used in the present evaluation \cite{pouchet2016polybench}. Building on this background, the following studies cover modular autotuning, reinforcement learning, learned compiler decisions, sequence reuse, and dependence-based optimization.
+
+\study{Nonio: Modular Compiler Phase Ordering}
+\ps{} Nobre et al.\ introduced Nonio, a modular framework for exploring compiler flags and optimization sequences in modern compilers \cite{nobre2019nonio}.
+
+\me{} The framework supports GCC and Clang/LLVM through an extensible software architecture. Its components allow researchers to integrate different exploration algorithms, objective functions, and compiler toolchains without redesigning the entire system.
+
+The authors demonstrate its use in exploring custom compiler configurations for a C program, considering execution time and energy consumption against standard compiler optimization settings.
+
+\re{} The work demonstrates how a common framework can support compiler design-space exploration and optimization-sequence specialization. Its modular approach makes it useful for comparing optimization strategies.
+
+\rg{} The framework does not specifically establish the effectiveness of a Gaussian Process with a sequence-aware kernel and cross-program warm starts.
+
+\study{Autotuning Search Space for Loop Transformations}
+\ps{} Kruse et al.\ proposed a tree-structured representation of loop-transformation configurations to model their relationships more explicitly than a flat parameter vector \cite{kruse2020autotuning}.
+
+\me{} The authors construct a search space that represents loop transformations and their legal relationships. They implement an autotuning system and evaluate it on selected PolyBench kernels, using compiler transformations and performance measurements to explore candidate configurations.
+
+Their design allows transformation sequences to be represented systematically, including complex loop transformations such as multilevel tiling. The experiments also discuss the need for search algorithms capable of navigating this structured space efficiently.
+
+\re{} The study demonstrates how a structured search space can represent loop-transformation configurations. Its findings motivate more effective exploration strategies for complex optimization choices.
+
+\rg{} The work focuses on loop-transformation configurations rather than a general fixed-length sequence of LLVM optimization passes.
+
+\study{Finding Effective Compiler Optimization Sequences: A Hybrid Approach}
+\ps{} Queiroz Junior et al.\ proposed a hybrid approach combining machine learning with iterative compilation to address the compiler optimization-selection problem \cite{queiroz2020hybrid}.
+
+\me{} The framework combines predictions from machine-learning techniques with empirical compilation and execution measurements. Rather than relying exclusively on a learned model or an unguided search, it uses their complementary strengths to identify promising optimization configurations.
+
+The authors investigate multiple strategies, evaluation metrics, and hardware platforms. Their experimental design examines how the hybrid method behaves under different optimization scenarios.
+
+\re{} The authors report that the hybrid approach improves on the evaluated machine-learning and iterative compilation alternatives and outperforms the best tested LLVM optimization level.
+
+\rg{} The reported hybrid approach does not specifically investigate the proposed sequence-aware Gaussian Process kernel and Expected Improvement strategy used in this work.
+
+\study{Bayesian Autotuning of PolyBench Programs}
+\ps{} Wu et al.\ developed a Bayesian-optimization-based autotuning framework for LLVM Clang/Polly loop-optimization pragmas \cite{wu2022bayesian}.
+
+\me{} The framework, based on the ytopt autotuning system, explores the parameter space of loop-optimization configurations. It evaluates several supervised-learning methods within Bayesian optimization and applies the framework to six computationally intensive PolyBench benchmarks.
+
+The experiments use large benchmark datasets and compare optimization configurations through execution-time measurements. The authors also investigate alternative tuning strategies for cases where the initial autotuning method does not improve performance.
+
+\re{} Their approach identifies lower execution times for five of the six studied benchmarks using 200 evaluations, while Floyd--Warshall does not benefit from the same autotuning configuration.
+
+\rg{} The study primarily tunes loop pragmas and their parameters rather than the ordering of a general set of compiler passes.
+
+\subsection{Reinforcement Learning for Compiler Phase Ordering}
+\study{AutoPhase: Learning Phase Orders for High-Level Synthesis}
+\ps{} Haj-Ali et al.\ proposed AutoPhase, which combines deep reinforcement learning with program-feature information to discover effective compiler optimization sequences for high-level synthesis (HLS) \cite{hajali2020autophase}.
+
+\me{} The framework applies reinforcement learning in an LLVM-based compilation environment targeting hardware generated through HLS. Random-forest models estimate relationships between program features and the effectiveness of optimization passes, helping reduce the candidate search space.
+
+The authors compare their method with existing phase-ordering approaches and study whether policies trained on a limited set of programs can generalize to additional programs.
+
+\re{} The reported experiments show a 28\% improvement in circuit performance over the \texttt{-O3} baseline. The approach also reports generalization to more than 12,000 programs after training on approximately 100 programs.
+
+\rg{} Its principal target is circuit performance in HLS, which differs from directly minimizing execution time for general-purpose CPU programs.
+
+\study{Reliable Compilation Optimization Sequence Generation}
+\ps{} Wu et al.\ introduced ROICF, a reinforcement-learning-based framework for generating reliable compiler optimization sequences \cite{wu2020roicf}.
+
+\me{} The framework is based on the standard LLVM optimization passes and formulates sequence generation as a learning problem. It aims to identify program-specific phase orderings while accounting for compilation reliability.
+
+Wu et al.\ propose ROICF, a reinforcement-learning framework that represents compiler optimization choices as agent actions and uses feedback from compilation to learn program-specific optimization sequences. Its stated emphasis is compilation reliability, so its objective and success criteria differ from runtime-focused comparison.
+
+\re{} The study presents a framework for generating optimization sequences with reliability as an explicit concern. It highlights that the effectiveness of an optimization sequence must be considered together with the reliability of the resulting compilation.
+
+\rg{} ROICF emphasizes compilation reliability, whereas this study evaluates verified runtime speedup under a fixed search budget. A direct performance comparison would require a shared runtime-tuning and verification protocol.
+
+\study{Reinforcement Learning Strategies for Compiler Optimization in HLS}
+\ps{} Shahzad et al.\ investigated several reinforcement-learning design choices for compiler optimization in high-level synthesis \cite{shahzad2022rl}.
+
+\me{} The study examines how pass-order information can be incorporated into the agent state, how multiple actions can be grouped into action tuples, and how episode length affects the learning process. It also investigates applying the LLVM \texttt{-O3} backend during training.
+
+These strategies are evaluated in an HLS compilation workflow, where the quality of generated hardware depends on the applied compiler transformations. The work emphasizes the interaction between state representation, action selection, and optimization-sequence construction.
+
+\re{} The study provides an experimental investigation of alternative reinforcement-learning configurations for compiler optimization. It emphasizes that the learning strategy and representation of pass choices are important design decisions.
+
+\rg{} The method is tailored to the HLS setting and does not establish which search strategy is most effective for a small, fixed runtime-tuning budget on CPU benchmarks.
+
+\study{POSET-RL: Optimizing Size and Execution Time}
+\ps{} Jain et al.\ developed POSET-RL, a reinforcement-learning approach to phase ordering that targets both executable size and execution time \cite{jain2022poset}.
+
+\me{} The system is integrated with LLVM and models optimization sequences using either manually organized subsequences or subsequences derived from an Oz optimization-dependence graph. Program states are represented using IR2Vec embeddings, which provide information about the intermediate representation.
+
+The approach constructs candidate sequences from optimization subsequences and uses reward information relating to binary size and execution time. Its evaluation includes x86 and AArch64 architectures and programs from SPEC CPU2006, SPEC CPU2017, and MiBench.
+
+\re{} The authors report average improvements of 6.19\% in binary size and 11.99\% in execution time over the Oz sequence for SPEC CPU2017 benchmarks.
+
+\rg{} POSET-RL relies on reinforcement-learning policies and constructed subsequences rather than the probabilistic sequence-similarity model used by the proposed method.
+
+\study{Ensemble Reinforcement Learning for Runtime Memory Optimization}
+\ps{} Chang and Park proposed an ensemble reinforcement-learning approach to search for compiler optimization sequences that reduce runtime memory profiles \cite{chang2023ensemble}.
+
+\me{} The work formulates compiler optimization as a sequence-search problem and explores an ensemble of reinforcement-learning strategies. Its target is the memory behavior of compiled programs, which may be particularly important for embedded and resource-constrained applications.
+
+Chang and Park extract 50 LLVM IR program features, reduce feature dimensionality using principal component analysis (PCA), and train an ensemble of reinforcement-learning models on clusters formed from randomly generated programs. Their objective is runtime memory-profile reduction rather than execution-time minimization.
+
+\re{} The work-in-progress report describes a 37\% greater memory-profile reduction than the standard optimization option. Because the objective is memory-profile reduction rather than execution-time minimization, this result is not directly comparable to the speedup values reported in this paper.
+
+\rg{} The work focuses on memory-oriented optimization and does not establish performance under the same runtime objective, search budget, and verification protocol used in this paper.
+
+\subsection{Machine Learning Frameworks and Compiler Infrastructure}
+\study{MLGO: Machine Learning-Guided Compiler Optimization}
+\ps{} Trofin et al.\ introduced MLGO, a framework for integrating machine-learning-based decision-making into LLVM optimization passes \cite{trofin2021mlgo}.
+
+\me{} The framework replaces selected hand-crafted compiler heuristics with learned models. The authors demonstrate the approach on inlining-for-size optimization, using policy-gradient and evolution-strategy methods to train models and integrate them into the compiler.
+
+The study investigates model training and deployment on real-world compiler workloads. It also evaluates whether models trained using one corpus continue to perform well across different targets and later versions of the software environment.
+
+\re{} The authors report up to 7\% code-size reduction relative to LLVM \texttt{-Oz} for the inlining-for-size case study and show that the learned model generalizes to diverse real-world targets.
+
+\rg{} MLGO demonstrates learning inside individual compiler decisions rather than searching arbitrary pass sequences with a sequence-aware Gaussian Process.
+
+\study{MLGOPerf: An ML-Guided Inliner for Performance}
+\ps{} Ashouri et al.\ proposed MLGOPerf, which extends ML-guided inlining toward optimizing execution performance rather than focusing solely on code size \cite{ashouri2022mlgoperf}.
+
+\me{} The framework uses a secondary learned model to estimate the performance reward associated with inlining decisions. This reward supports training a reinforcement-learning agent for performance-oriented function inlining, reducing the need for prohibitively expensive direct performance evaluations during training.
+
+The authors evaluate their approach on SPEC CPU2006 and CBench. They also investigate how improved inlining decisions increase the opportunities for further autotuning of code regions.
+
+\re{} The reported speedups over LLVM \texttt{-O3} reach 1.8\% on SPEC CPU2006 and 2.2\% on CBench. The authors further report up to 26\% more opportunities for region autotuning, potentially enabling additional performance gains.
+
+\rg{} The method focuses on function inlining and its reward model, rather than the complete ordering of a general set of optimization passes.
+
+\study{CompilerGym: A Research Environment for Compiler Optimization}
+\ps{} Cummins et al.\ introduced CompilerGym, a reusable environment for studying compiler and program optimization using artificial-intelligence methods \cite{cummins2022compilergym}.
+
+\me{} CompilerGym provides a Gym-style interface through which learning algorithms can interact with compiler tasks using observations, actions, and rewards. The toolkit includes real compiler optimization environments and facilities for conducting repeatable experiments.
+
+The authors characterize the environment's optimization spaces, computational efficiency, and fault tolerance. The infrastructure is designed to reduce the engineering effort needed to compare optimization algorithms and investigate reproducibility issues.
+
+\re{} The publication reports substantially more efficient experimentation than prior approaches, including a 27-fold computational-efficiency improvement in its comparisons, while also addressing fault tolerance and reproducibility.
+
+\rg{} CompilerGym provides experimental infrastructure rather than a single optimization-search algorithm, so it does not by itself resolve the compiler phase-ordering problem.
+
+\subsection{Sequence Reuse and Dependence-Based Optimization}
+\study{Learning Compiler Pass Orders Using Coresets}
+\ps{} Liang et al.\ proposed learning compiler pass-ordering policies using a small coreset of promising sequences and normalized-value prediction \cite{liang2023coreset}.
+
+\me{} Instead of constructing an entire optimization sequence one pass at a time, the method identifies a compact collection of sequences that perform well across programs. A learned policy predicts normalized values for candidates in this collection and selects sequences for unseen programs.
+
+The experiments cover 4,683 unseen code repositories across 14 datasets. The emphasis is on generalization across program domains and reducing the cost of generating and evaluating complete sequences.
+
+\re{} The authors report an average 4.5\% improvement in code-size optimization relative to LLVM \texttt{-Oz} across the evaluated unseen repositories.
+
+\rg{} The method primarily targets binary size and uses a learned sequence-selection policy rather than Gaussian Process regression for low-budget runtime minimization.
+
+\study{ACPO: An AI-Enabled Compiler Framework}
+\ps{} Ashouri et al.\ introduced ACPO, a framework intended to make it easier to integrate machine-learning models into LLVM optimization passes \cite{ashouri2024acpo}.
+
+\me{} The framework supplies Python-based facilities for model training and inference and supports applying learned models to optimization decisions. The authors demonstrate its use with loop-unrolling and function-inlining optimization in LLVM.
+
+The work evaluates learned optimization decisions across PolyBench, Coral-2, CoreMark, Graph500, and CBench. As a work-in-progress publication, it describes a broader integration direction while presenting selected experimental use cases.
+
+\re{} The authors report loop-unrolling improvements over LLVM \texttt{-O3} averaging 4\% on PolyBench, 3\% on Coral-2, 5.4\% on CoreMark, and 0.2\% on Graph500. Combining the inlining and loop-unrolling models yields reported speedups of 4.5\% on PolyBench and 2.4\% on CBench.
+
+\rg{} ACPO supports learned decisions within selected passes, whereas the proposed project investigates search over complete ordered pass sequences.
+
+\study{Dependence-Based Compiler Optimization}
+\ps{} Liu et al.\ introduced a dependence-based compiler optimization framework (DCO) that groups related passes into useful subsequences to reduce the phase-ordering search space \cite{liu2024dco}.
+
+\me{} DCO models both source-code dependence and pairwise performance dependence between compiler passes. These relationships are represented using an optimization-dependence graph, which is clustered to generate subsequences intended to preserve beneficial interactions while reducing the number of search choices.
+
+The method is integrated with the OpenTuner and LaMCTS iterative-compilation frameworks and evaluated using CBench and PolyBench. Its experiments investigate runtime performance and code-size optimization across different compiler optimization tasks and hardware platforms.
+
+\re{} The authors report up to 1.22 times the runtime speedup of LLVM \texttt{-O3} and a 1.24-fold improvement in code-size reduction relative to \texttt{-Oz}.
+
+\rg{} DCO relies on dependence graphs and generated subsequences, whereas the proposed method directly models sequence similarity and uses Expected Improvement to guide a limited runtime-search budget.
+
+\subsection{Research Gap and Motivation}
+The reviewed studies demonstrate that compiler optimization can be improved through modular design-space exploration, reinforcement learning, machine-learning-guided pass decisions, and dependence-aware sequence construction. They also show that optimization quality depends on the target workload, the objective metric, and the cost of acquiring performance feedback.
+
+However, the reviewed approaches differ in their optimization targets, evaluation budgets, and sequence representations. Several focus on high-level synthesis, code size, loop pragmas, or individual compiler decisions, while other approaches depend on reinforcement-learning training or a predefined collection of subsequences. These differences make it important to compare approaches under a common experimental protocol.
+
+The present work investigates this issue through a controlled comparison of Random Search, a Genetic Algorithm, TPE, and sequence-aware Gaussian Process Bayesian optimization on five PolyBench/C programs. The proposed method represents candidate sequences using position-wise information, ordered adjacent pairs, and pass-content information, then uses Expected Improvement to select candidates for evaluation. Its contribution is an experimental assessment under a restricted budget of 20 evaluations per search, with correctness verification and a distinction between search-time observations and final verified runtime results. Additional work broadens the set of relevant learning and search strategies. Static neural compiler optimization has been studied using deep reinforcement learning, while IR2Vec represents LLVM intermediate representations as scalable program embeddings for machine-learning tasks \cite{mammadli2020static,venkatakeerthy2020ir2vec}. Search guided by learned cost models has also been applied to Halide schedule selection, and transfer-tuning has investigated reusing schedules across related tensor programs to reduce search time \cite{gibson2022transfer,adams2019halide}. Broader surveys and research on machine learning in compiler optimization describe the feature representations, training methods, and deployment challenges involved in learned optimization \cite{wang2018mlcompiler,hajali2021thesis}. More recently, large language models have been investigated for proposing compiler optimization choices, with compiler-generated feedback used to refine candidate outputs \cite{cummins2023llmcompiler,grubisic2024feedback}. Related HLS research has examined improved policy-agent models for compiler directives \cite{munafo2023policy}. To document the experimental toolchain precisely, the LLVM 18.1.3 release notes and version-specific pass documentation are also relevant implementation sources \cite{llvm1813notes,llvm1813passes}.

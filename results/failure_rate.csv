@@ -1,0 +1,6 @@
+method,failed_evals_per_search,failure_rate_pct
+random,1.12,5.6000000000000005
+ga,0.64,3.2
+bo_tpe,1.32,6.6
+proposed,0.4,2.0
+proposed_nowarm,0.56,2.8000000000000003

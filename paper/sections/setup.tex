@@ -1,0 +1,134 @@
+\section{Experimental Setup}
+\subsection{Search Space and Compilation Pipeline}
+The search space consists of fixed-length sequences of 15 positions. Each position can contain one of 25 LLVM optimization passes or the special \texttt{none} choice, giving $26^{15} \approx 1.68\times 10^{21}$ possible sequences. The 25 passes are:
+\texttt{sroa}, \texttt{mem2reg}, \texttt{early-cse}, \texttt{instcombine}, \texttt{simplifycfg}, \texttt{gvn}, \texttt{licm}, \texttt{loop-rotate}, \texttt{indvars}, \texttt{loop-unroll}, \texttt{loop-vectorize}, \texttt{slp-vectorizer}, \texttt{sccp}, \texttt{dce}, \texttt{adce}, \texttt{dse}, \texttt{reassociate}, \texttt{jump-threading}, \texttt{correlated-propagation}, \texttt{memcpyopt}, \texttt{tailcallelim}, \texttt{loop-deletion}, \texttt{loop-idiom}, \texttt{loop-load-elim}, \texttt{inline}.
+
+The \texttt{none} choice represents the absence of a candidate optimization sequence; it is not an additional named LLVM pass. Candidate sequences are applied to LLVM intermediate representation (IR) generated from the source program. The source is initially converted to IR using Clang with \texttt{-O0 -Xclang -disable-O0-optnone}. LLVM's \texttt{opt} tool then applies the candidate sequence through the new pass manager.
+
+Importantly, the candidate sequence replaces the IR-level \texttt{default<O3>} optimization pipeline; it is not appended after that pipeline. After the candidate transformations, \texttt{llc -O3 -relocation-model=pic -filetype=obj} performs code generation, and Clang links the resulting object with the benchmark utility code and the mathematical library (\texttt{-lm}). The baseline instead uses \texttt{opt -passes=default<O3>} before the same code-generation and linking stages. Thus, the comparison isolates the searched IR optimization sequence while retaining the same subsequent code-generation configuration.
+
+For example, a candidate sequence containing \texttt{mem2reg}, \texttt{instcombine}, and \texttt{gvn}, in that order, is passed to LLVM's new pass manager using the following command:
+\begin{center}
+\texttt{opt -passes="function(mem2reg,instcombine,gvn)"}
+\end{center}
+The implementation constructs the pipeline string from each candidate sequence using \texttt{to\_pipeline}, including the required pass-manager adaptors for different pass types.
+
+\subsection{Benchmarks}
+The evaluation uses five kernels from PolyBench/C 4.2.1 \cite{pouchet2016polybench}. Their compile-time parameters are listed in Table~\ref{tab:bench}.
+
+The benchmark set covers matrix multiplication, an iterative two-dimensional stencil, all-pairs shortest paths, covariance computation, and two consecutive matrix multiplications. The programs are evaluated as single-threaded workloads without OpenMP.
+
+\begin{table}[t]
+\caption{PolyBench/C Benchmarks and Compile-Time Parameters}
+\label{tab:bench}
+\centering\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Benchmark & Compile-time parameters\\
+\midrule
+GEMM & \texttt{-DLARGE\_DATASET}\\
+Jacobi-2D & \texttt{-DTSTEPS=200 -DN=1300}\\
+Floyd--Warshall & \texttt{-DN=900}\\
+Covariance & \texttt{-DM=800 -DN=900}\\
+2MM & \texttt{-DNI=500 -DNJ=550}\\
+ & \texttt{-DNK=700 -DNL=750}\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Implementation Environment}
+The experiments were conducted using LLVM/Clang 18.1.3 in Ubuntu 24.04 running under Windows Subsystem for Linux 2 (WSL2). Candidate sequences were evaluated through the compilation pipeline described above. Search-time measurements used the minimum of three execution timings, while final verification used the minimum of ten timings. All methods were evaluated using the same five PolyBench/C benchmarks and a budget of 20 evaluations per search.
+
+\subsection{Compared Search Methods}
+Five methods were evaluated under the reported search budget:
+\begin{enumerate}[leftmargin=*,itemsep=1pt,label=\arabic*)]
+\item Random Search: samples candidate pass sequences without learning from previous evaluations.
+\item Genetic Algorithm (GA): uses population-based evolutionary operations to generate and select candidate sequences.
+\item Tree-structured Parzen Estimator (TPE): uses density estimates from previous evaluations to guide candidate selection.
+\item Proposed Bayesian Optimization: uses a Gaussian Process with a sequence-aware kernel and Expected Improvement to guide candidate selection. Its initial design includes warm-start sequences from other benchmark programs.
+\item Proposed Bayesian Optimization without warm start: uses the same search approach as the proposed method, except that all eight initial evaluations use randomly generated sequences. This ablation examines whether warm-start initialization changes the verified performance.
+\end{enumerate}
+
+\begin{table}[t]
+\caption{Main Implementation Modules and Responsibilities}
+\label{tab:modules}
+\centering\footnotesize
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{2.1cm}X@{}}
+\toprule
+Module or function & Responsibility\\
+\midrule
+\texttt{base\_ir} & Generates LLVM IR from benchmark source code.\\
+\texttt{to\_pipeline} & Converts a length-15 candidate sequence into LLVM pass-manager syntax.\\
+\texttt{build} & Applies the selected pass pipeline, performs code generation, and links the executable.\\
+\texttt{Tracker} & Evaluates candidates and records runtime, compilation timing, failures, and run metadata.\\
+\texttt{run\_random}, \texttt{run\_ga}, \texttt{run\_tpe} & Implement Random Search, the Genetic Algorithm, and TPE baselines.\\
+\texttt{featurize}, \texttt{kern} & Construct sequence features and compute the sequence-aware kernel.\\
+\texttt{gp\_fit}, \texttt{gp\_predict} & Fit the Gaussian Process and predict candidate objectives and uncertainty.\\
+\texttt{run\_proposed} & Standardizes the objective, constructs the candidate pool, scores Expected Improvement, and selects candidates.\\
+\texttt{output\_hash}, \texttt{finalize} & Check output correctness and re-measure the first candidate that passes verification.\\
+\texttt{cmd\_run}, \texttt{cmd\_analyze} & Run or resume experiments, summarize results, and generate analysis outputs.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Parameter Settings}
+Table~\ref{tab:params} summarizes the main settings used in the reported experiments.
+
+\begin{table}[t]
+\caption{Main Experimental and Search Parameters}
+\label{tab:params}
+\centering\footnotesize
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{2.2cm}X@{}}
+\toprule
+Parameter & Setting\\
+\midrule
+Sequence length & 15 positions\\
+Pass choices & 25 LLVM passes plus \texttt{none}\\
+Evaluation budget & 20 evaluations per search\\
+Random seeds & 0--4 (five seeds)\\
+Search-time measurement & Minimum of three executions\\
+Final verification & Up to five fastest distinct candidates checked; minimum of ten executions for final timing\\
+GP kernel length scale & $\ell \in \{0.25, 0.5, 1, 2\}$\\
+Covariance noise & 0.01\\
+Expected Improvement parameter & $\xi = 0.01$\\
+Candidate pool & Up to 300 random candidates and 200 mutated candidates\\
+Mutation strategy & 1--3 edits; replacement probability 0.7, otherwise adjacent swap\\
+Warm start & Up to three verified sequences used among the first eight evaluations\\
+Genetic Algorithm & Population size 10; tournament size 2; single-point crossover; per-position mutation probability $1/15$.\\
+TPE & Optuna TPE sampler; 10 startup trials; minimization objective.\\
+Sequence-kernel components & Equal weights (1:1:1) for position, ordered adjacent-pair, and pass-count similarities.\\
+Length-scale selection & Select $\ell \in \{0.25, 0.5, 1, 2\}$ by maximum log marginal likelihood at each BO iteration.\\
+EI candidate scoring & Score up to 500 candidates per iteration before filtering: 300 random and 200 mutated candidates.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Evaluation Protocol}
+Each search used a budget of 20 evaluations. Five random seeds (0--4) were used for each of the five methods on each of the five PolyBench/C benchmarks. This gives 25 searches per method and 125 searches in total.
+
+\textit{Search-time measurement:} Each successfully built candidate was executed three times, and the minimum runtime was used as its search-time measurement. Compilation failures, execution failures, and executions exceeding the 30\,s timeout were recorded as failed evaluations. The search procedure used a penalty runtime of 1000\,s for failed evaluations. Failed evaluations were reported separately and excluded from verified speedup statistics.
+
+\textit{Final verification:} After each search, the successful, distinct candidates were ranked by their search-time runtime. Up to five candidates were checked in order for output correctness by comparing output hashes against an unoptimized reference. The first candidate that passed the check was re-timed using the minimum of ten executions. The LLVM \texttt{-O3} baseline was measured using the same re-timing procedure.
+
+Search-time measurements and verified results therefore represent different stages of the evaluation. Search-time measurements describe the candidates encountered during optimization, whereas the verified results describe the selected, correctness-checked candidate after re-timing. Search-time performance is not treated as evidence of final performance superiority.
+
+\subsection{Evaluation Metrics}
+The primary metric is verified speedup relative to LLVM \texttt{-O3}. For each benchmark and random seed, speedup is calculated as the baseline runtime divided by the runtime of the selected candidate that passes the output-correctness check. Failed builds and failed executions are recorded separately and are not treated as valid runtime observations.
+
+Since speedups are ratios, the aggregate performance across $N = 25$ benchmark--seed observations per method is reported using the geometric mean:
+\begin{equation}
+S_{\mathrm{GM}} = \exp\!\left(\frac{1}{N}\sum_{i=1}^{N}\log S_i\right),
+\end{equation}
+where $S_i$ denotes the verified speedup for observation $i$. A value greater than one indicates an aggregate improvement over LLVM \texttt{-O3}, whereas a value below one indicates lower performance than the baseline.
+
+Uncertainty in the geometric-mean speedup is summarized using a 95\% percentile bootstrap confidence interval based on 5000 resamples of the $N = 25$ run-level verified speedups. These intervals describe uncertainty across the evaluated benchmark--seed observations and should not be interpreted as evidence of generalization to all programs or hardware platforms.
+
+To describe variability, the robustness metric is calculated by computing the standard deviation of verified speedup across the five seeds for each benchmark and then averaging these standard deviations across the five benchmarks. Smaller values indicate less variation across seeds within the evaluated benchmark set.
+
+The proposed method is compared with each baseline using an exact two-sided Wilcoxon signed-rank test on the 25 matched benchmark--seed pairs. The same benchmark and seed are paired across methods. Because only five benchmarks are included, the statistical comparisons are interpreted cautiously and do not establish general superiority beyond the evaluated workloads.
+
+Additional metrics characterize search behavior and cost. The verified beat rate is the percentage of searches whose final verified speedup exceeds one. The compile-time ratio compares the compilation time of the selected sequence with the corresponding LLVM \texttt{-O3} baseline. Search-time evaluations to beat \texttt{-O3} records the number of evaluations before the first candidate whose measured runtime is below the baseline runtime; it is capped at the evaluation budget when no such candidate is observed. The search-time beat rate is the percentage of searches that encounter at least one such candidate during search.
+
+The failure rate is calculated as the number of failed evaluations divided by the total number of evaluations attempted. Failed evaluations are summarized separately and excluded from verified speedup calculations.
+
+Total tuning time is measured as wall-clock time per search. Where available, it is decomposed into compilation, execution, and other time. The execution component is estimated from the repeated runtime measurements, while other time can include model fitting, candidate generation, failed-build overhead, and other search overhead. These components are interpreted as approximate cost measures rather than a complete attribution of every second to an individual algorithmic operation.

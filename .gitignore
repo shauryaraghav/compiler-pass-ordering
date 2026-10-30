@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+results_smoke/
+results/work/
+paper/*.aux
+paper/*.log
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.out
+paper/*.synctex.gz
+.env
+config/experiment.env

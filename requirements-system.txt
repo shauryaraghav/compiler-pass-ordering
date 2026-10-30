@@ -1,0 +1,8 @@
+# System packages (Ubuntu 24.04 / WSL2) needed to RUN the experiments (not needed for analysis or dashboard)
+clang-18
+llvm-18
+git
+python3-venv
+build-essential
+# Paper reports LLVM/Clang 18.1.3. Ubuntu 24.04's clang/llvm packages provide LLVM 18.
+# Install with:  sudo apt install clang llvm git python3-venv build-essential

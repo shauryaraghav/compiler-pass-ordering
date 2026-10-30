@@ -1,0 +1,8 @@
+# Python 3.10+ (analysis and dashboard were verified on Python 3.12.3)
+numpy>=2.0
+pandas>=2.2
+scipy>=1.11
+matplotlib>=3.8
+optuna>=3.6
+streamlit>=1.50
+plotly>=5.18
